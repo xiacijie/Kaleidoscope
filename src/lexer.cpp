@@ -1,8 +1,8 @@
 #include "lexer.hpp"
 
 
-static std::string IdentifierStr;
-static double NumVal;
+std::string IdentifierStr;
+double NumVal;
 
 //return the next token from stdin
 static int gettok(){

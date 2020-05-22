@@ -1,5 +1,8 @@
 #include <string>
 
+extern std::string IdentifierStr;
+extern double NumVal;
+
 // The lexer returns tokens [0-255] if it is an unknown character, otherwise one
 // of these for known things.
 enum Token {

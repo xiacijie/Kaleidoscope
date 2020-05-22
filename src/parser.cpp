@@ -77,7 +77,101 @@ std::unique_ptr<ExprAST> LogError(const char *Str) {
   fprintf(stderr, "LogError: %s\n", Str);
   return nullptr;
 }
+
 std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
   LogError(Str);
   return nullptr;
+}
+
+// numberexpr ::= number
+static std::unique_ptr<ExprAST> ParseNumberExpr() {
+    auto Result = std::make_unique<NumberExprAST>(NumVal);
+    getNextToken();
+    return std::move(Result);
+}
+
+/// parenexpr ::= '(' expression ')'
+static std::unique_ptr<ExprAST> ParseParenExpr() {
+    getNextToken();
+    auto V = ParseExpression();
+    if (!V)
+        return nullptr;
+    
+    if (CurTok != ')')
+        return LogError("expected ')'");
+    getNextToken();
+    return V;
+}
+
+/// identifierexpr
+///   ::= identifier
+///   ::= identifier '(' expression* ')'
+static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
+    std::string IdName = IdentifierStr;
+
+    getNextToken();
+
+    if (CurTok != '(') //simple variable
+        return std::make_unique<VariableExprAST>(IdName);
+    
+    //Call
+    getNextToken();
+    std::vector<std::unique_ptr<ExprAST>> Args;
+    if (CurTok != ')') {
+        while(1) {
+            if (auto Arg = ParseExpression())
+                Args.push_back(std::move(Arg));
+            else
+                return nullptr;
+            
+            if (CurTok == ')')
+                break;
+            
+            if (CurTok != ',')
+                return LogError("Expected ')' or ',' in argument list");
+            getNextToken();
+        }
+    }
+
+    getNextToken(); //eat ')'
+
+    return std::make_unique<CallExprAST>(IdName, std::move(Args));
+}
+
+/// primary
+///   ::= identifierexpr
+///   ::= numberexpr
+///   ::= parenexpr
+static std::unique_ptr<ExprAST> ParsePrimary() {
+    switch (CurTok) {
+        default:
+            return LogError("unknown token when expecting an expression");
+        case tok_indentifier:
+            return ParseIdentifierExpr();
+        case tok_number:
+            return ParseNumberExpr();
+        case '(':
+            return ParseParenExpr();
+    }
+}
+
+/// BinopPrecedence - This holds the precedence for each binary operator that is
+/// defined.
+static std::map<char, int> BinopPrecedence;
+
+static int GetTokPrecedence(){
+    if (!isascii(CurTok))
+        return -1;
+
+    //Make sure it is a declared binop.
+    int TokPrec = BinopPrecedence[CurTok];
+    if (TokPrec <= 0) return -1;
+    return TokPrec;
+}
+
+int main(){
+    BinopPrecedence['<'] = 10;
+    BinopPrecedence['+'] = 20;
+    BinopPrecedence['-'] = 20;
+    BinopPrecedence['*'] = 40; 
 }
